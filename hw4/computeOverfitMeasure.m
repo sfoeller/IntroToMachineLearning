@@ -10,3 +10,40 @@ function [ overfit_m ] = computeOverfitMeasure( true_Q_f, N_train, N_test, var, 
 %   Output
 %       overfit_m: vector of length num_expts, reporting each of the
 %                  differences in error between H_10 and H_2
+
+overfit_m = zeros(num_expts,1);
+
+%tic;
+count = 0;
+for i=1:num_expts
+    [train_set test_set] = generate_dataset(true_Q_f, N_train, N_test, var);
+    
+    % Transform training set to Z-space
+    g2_train = computeLegPoly(train_set(1:end, 1), 2); % Do the 2nd order legendre transform
+    g10_train = computeLegPoly(train_set(1:end, 1), 10); % Do the 10th order legendre transform
+    
+    % Find optimal weight vector based on the training data in the Z-space
+    g2_wlin = glmfit(g2_train', train_set(1:end,2), 'normal','constant','off'); % find 2nd order seperator
+    g10_wlin = glmfit(g10_train', train_set(1:end,2), 'normal','constant','off'); % find 10th order seperator
+    
+    % Transform test set to Z-space
+    g2_test = computeLegPoly(test_set(1:end, 1), 2); % Do the 2nd order legendre transform
+    g10_test = computeLegPoly(test_set(1:end, 1), 10); % Do the 2nd order legendre transform
+    
+    % Apply Wlin to test set in Z-space to estimate y values 
+    g2_out = glmval(g2_wlin, g2_test','identity','constant','off');
+    g10_out = glmval(g10_wlin, g10_test','identity','constant','off');
+    
+    % Calculate error for g2 and g10
+    e2 = mean((g2_out -  test_set(1:end, 2)).^2);
+    e10 = mean((g10_out -  test_set(1:end, 2)).^2);
+    
+    overfit_m(i) = e10 - e2;
+    
+    if overfit_m(i) > 100
+        e10
+        count = count + 1
+    end
+end
+
+%toc

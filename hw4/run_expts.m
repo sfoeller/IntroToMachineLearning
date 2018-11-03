@@ -2,10 +2,15 @@
 
 Q_f = 5:5:20; % Degree of true function
 N = 40:40:120; % Number of training examples
-var = 0:0.5:2; % Variance of stochastic noise
+var = 0.5 % Variance of stochastic noise
+
+% [p,q,r] = meshgrid(Q_f, N, var);
+% pairs = [p(:) q(:) r(:)];
+% numCombinations = size(pairs,1)
 
 expt_data_mat = zeros(length(Q_f), length(N), length(var));
 
+tic
 for ii = 1:length(Q_f)
     for jj = 1:length(N)
         for kk = 1:length(var)
@@ -14,4 +19,4 @@ for ii = 1:length(Q_f)
     end
     fprintf('.');
 end
-            
+toc          

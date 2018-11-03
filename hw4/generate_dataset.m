@@ -9,3 +9,40 @@ function [ train_set test_set ] = generate_dataset( Q_f, N_train, N_test, sigma 
 %   Outputs:
 %       train_set and test_set are both 2-column matrices in which each row
 %       represents an (x,y) pair
+
+train_set = zeros(N_train, 2);
+test_set = zeros(N_test, 2);
+
+% range of our x values
+a = -1;
+b = 1;
+
+% Sample x values for training and test sets
+train_set(1:end,1) = (b-a)*rand(N_train,1)+ a;
+test_set(1:end,1) = (b-a)*rand(N_test,1)+ a;
+
+% Generate coefficients with standard normal distribution
+coeff = normrnd(0,1,Q_f+1,1); 
+
+% Find value to scale coefficients by and apply it.
+q = 0:Q_f;
+coeff = coeff/sqrt(sum(1./(2*q+1)));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compute the y values for the training set.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% noise follows a standard normal distribution
+noise = normrnd(0,1,1,N_train); 
+
+% Real target function output
+f = sum(coeff.*computeLegPoly(train_set(1:end, 1), Q_f));
+
+% Noisy y output, scaling noise by our chosen sigma
+train_set(1:end,2) = f+sigma*noise;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compute the y values for the test set.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+noise = normrnd(0,1,1,N_test); 
+f = sum(coeff.*computeLegPoly(test_set(1:end, 1), Q_f));
+test_set(1:end,2) = f+sigma*noise;
