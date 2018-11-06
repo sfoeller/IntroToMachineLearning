@@ -31,18 +31,18 @@ coeff = coeff/sqrt(sum(1./(2*q+1)));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Compute the y values for the training set.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% noise follows a standard normal distribution
-noise = normrnd(0,1,1,N_train); 
+% noise follows a standard normal distribution, with our chosen sigma
+noise = normrnd(0,sigma,1,N_train); 
 
 % Real target function output
 f = sum(coeff.*computeLegPoly(train_set(1:end, 1), Q_f));
 
-% Noisy y output, scaling noise by our chosen sigma
-train_set(1:end,2) = f+sigma*noise;
+% Noisy y output
+train_set(1:end,2) = f+noise;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Compute the y values for the test set.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-noise = normrnd(0,1,1,N_test); 
+noise = normrnd(0,sigma,1,N_test); 
 f = sum(coeff.*computeLegPoly(test_set(1:end, 1), Q_f));
-test_set(1:end,2) = f+sigma*noise;
+test_set(1:end,2) = f+noise;
