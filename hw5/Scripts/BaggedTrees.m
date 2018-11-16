@@ -8,18 +8,30 @@ function [ oobErr ] = BaggedTrees( X, Y, numBags )
 %       numBags : Number of trees to learn in the ensemble
 %
 %   You may use "fitctree" but do not use "TreeBagger" or any other inbuilt
-%   bagging function
+%   bagging function   
 
-    oobErrors = zeros(numBags,1);
-    
-    [bags, oobIndexesForBag] = CreateBags(X, Y, numBags);
-    
-    for i=1:numBags
-        oobErrors(i,1) = CalculateOutOfBagError(X, Y, bags(1:i,1), oobIndexesForBag(1:i,1));
-    end
-    
-    plot(oobErrors)
-    oobErr = oobErrors(end);
+[bags, oobIndexesForBag] = CreateBags(X, Y, numBags);
+
+N = size(X,1);
+oobPredictions = zeros(N,numBags);
+oobErrors = zeros(numBags,1);
+for bag=1:numBags   
+    % Find all the samples that don't appear in the bag
+    xNotInBag = X(oobIndexesForBag{bag},:);
+    % Get classifications for sample not in this bag
+    oobPredictions(oobIndexesForBag{bag},bag) = predict(bags{bag}, xNotInBag);
+    % Get majority vote
+    oobMajority = sign(sum(oobPredictions(:,1:bag),2));
+    oobMajority(oobMajority == 0) = randsample([-1 1],1);
+    % Get the indexes for samples that we could get oob info for
+    %oobIndexes = find(oobMajority);
+    % Calculate average number of oob missclassifications
+    %oobErrors(bag,1) = sum(oobMajority(oobIndexes,1) ~= Y(oobIndexes,1))/length(oobIndexes);
+    oobErrors(bag,1) = sum(oobMajority ~= Y)/N;
+end
+
+plot(oobErrors)
+oobErr = oobErrors(end);
 end
 
 function [OutOfBagError] = CalculateOutOfBagError(X, Y, bags, oobIndexesForBag)
@@ -59,10 +71,9 @@ function [OutOfBagError] = CalculateOutOfBagError(X, Y, bags, oobIndexesForBag)
     oobClassIndexes = find(oobClassAll);
     oobClass = oobClassAll(oobClassIndexes,1);
     oobY = Y(oobClassIndexes,1);
-    size(oobY,1)
     
     % Compare ensemble classification to real classification
-    missclassCount = sum(oobClass ~= oobY)
+    missclassCount = sum(oobClass ~= oobY);
 
     % Return average classification error
     OutOfBagError = missclassCount/size(oobClass,1);
