@@ -13,71 +13,61 @@ function [ oobErr ] = BaggedTrees( X, Y, numBags )
 [bags, oobIndexesForBag] = CreateBags(X, Y, numBags);
 
 N = size(X,1);
-oobPredictions = zeros(N,numBags);
-oobErrors = zeros(numBags,1);
-for bag=1:numBags   
-    % Find all the samples that don't appear in the bag
-    xNotInBag = X(oobIndexesForBag{bag},:);
-    % Get classifications for sample not in this bag
-    oobPredictions(oobIndexesForBag{bag},bag) = predict(bags{bag}, xNotInBag);
-    % Get majority vote
-    oobMajority = sign(sum(oobPredictions(:,1:bag),2));
-    oobMajority(oobMajority == 0) = randsample([-1 1],1);
-    % Get the indexes for samples that we could get oob info for
-    %oobIndexes = find(oobMajority);
-    % Calculate average number of oob missclassifications
-    %oobErrors(bag,1) = sum(oobMajority(oobIndexes,1) ~= Y(oobIndexes,1))/length(oobIndexes);
-    oobErrors(bag,1) = sum(oobMajority ~= Y)/N;
+oobErrors = NaN(numBags,1);
+accumPred = NaN(N,2);
+dataOobCount = zeros(N,1);
+
+for bag=1:numBags
+    % Get current tree
+    tree = bags{bag};
+    % Get this bags oob indexes
+    oobI = oobIndexesForBag(:,bag);
+    
+    % If there are NaN rows in input scores, treat them as "no observations" and reset to 0
+    nanscore = all(isnan(accumPred),2) & oobI;
+    accumPred(nanscore,:) = 0;
+
+    % Get data, weights and scores for this tree
+    xNotInBag = X(oobI,:);
+    
+    % Get predictions for oob data.
+    [~,~,nodes] = predict(tree,xNotInBag);
+    
+    % Get the probability for the classification
+    predProb = tree.ClassProb(nodes,:);
+
+    % Update how much this tree affects the prediction of each data point.
+    tempOobCount = dataOobCount(oobI) + 1;
+
+    % Get difference of old accumulation of predictions and the current trees prediction
+    delta = predProb - accumPred(oobI,:);
+    % We get this tree's predictions worth by dividing by how much its
+    % contributing to the total prediction for each data point.
+    gamma = bsxfun(@rdivide,delta,tempOobCount);
+    % Update the accumulated predictions of the trees.
+    accumPred(oobI,:) = accumPred(oobI,:) + gamma;
+
+    % Save the current number of predictions for each data point.
+    dataOobCount(oobI) = tempOobCount;
+
+    % Find class with max probability for classification
+    oobPredictions = zeros(N,1);
+    
+    % Find rows that we were able to find oob info for
+    notNaN = ~all(isnan(accumPred),2); 
+
+    % Find class with max prob
+    [~,classNum] = max(accumPred(notNaN,:),[],2);
+    oobPredictions(notNaN) = tree.ClassNames(classNum);
+
+    oobSamplesCounted = length(oobPredictions(notNaN));
+    if oobSamplesCounted > 0
+        oobErrors(bag) = sum(oobPredictions(notNaN) ~=Y(notNaN))/oobSamplesCounted;
+    end
 end
 
 plot(oobErrors)
 oobErr = oobErrors(end);
 end
-
-function [OutOfBagError] = CalculateOutOfBagError(X, Y, bags, oobIndexesForBag)
-    N = size(X,1);
-    numBags = size(bags,1);
-    
-    classificationList = zeros(N,numBags);
-    for bag=1:numBags
-        % Find all the samples that don't appear in the bag
-        xNotInBag = X(oobIndexesForBag{bag},:);
-        
-        % Get classifications for sample not in this bag
-        classificationList(oobIndexesForBag{bag},bag) = predict(bags{bag}, xNotInBag);
-    end
-    
-    % Get majority vote for classification across all samples
-    oobClassAll = zeros(N,1);
-    for i=1:size(classificationList,1)
-        temp = classificationList(i,:);
-        
-        % Remove zeros
-        temp(temp == 0) = [];
-        if isempty(temp)
-            oobClassAll(i,1) = 0;
-        else
-            [M,F,C] = mode(temp);
-            if length(C) > 1
-                % If there is a tie randomly select one of the values
-                oobClassAll(i,1) = randsample(C,1);
-            else
-                oobClassAll(i,1) = M;
-            end
-        end 
-    end
-    
-    % Get the indexes for samples that we could get oob info for
-    oobClassIndexes = find(oobClassAll);
-    oobClass = oobClassAll(oobClassIndexes,1);
-    oobY = Y(oobClassIndexes,1);
-    
-    % Compare ensemble classification to real classification
-    missclassCount = sum(oobClass ~= oobY);
-
-    % Return average classification error
-    OutOfBagError = missclassCount/size(oobClass,1);
-end
-
 
 

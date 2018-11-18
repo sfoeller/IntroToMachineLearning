@@ -1,8 +1,9 @@
 function [bags, oobIndexesForBag] = CreateBags(X, Y, numBags)
 %CREATEBAGS Summary of this function goes here
 %   Detailed explanation goes here
+    N = size(X,1);
     bags = cell(numBags,1);
-    oobIndexesForBag = cell(numBags,1);
+    oobIndexesForBag = false(N,numBags);
     
     % Put our data samples and class back together for sampling below
     data = [X Y]; 
@@ -19,12 +20,9 @@ function [bags, oobIndexesForBag] = CreateBags(X, Y, numBags)
         bags{i} = fitctree(X, Y);
         
         % Record indices of OOB instances
-        oobIndex = true(size(X,1),1);
-        uniqueI = unique(sampleIndexes);
-        oobIndex(uniqueI,1) = false;
-        
-        % Store indexes of samples that aren't in this bag
-        oobIndexesForBag{i} = oobIndex;
+        oobIndex = true(N,1);
+        oobIndex(sampleIndexes) = false;
+        oobIndexesForBag(:,i) = oobIndex;
     end
 end
 
